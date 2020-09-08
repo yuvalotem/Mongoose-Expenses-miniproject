@@ -11,12 +11,35 @@ const route = express()
 //     e.save()
 // }
 
-route.get("/expenses", (req, res) =>{
-    Expense.find({})
-    .sort({date: -1})
-    .then(function(expenses){
-        res.send(expenses)
-    })
+route.get("/expenses", (req, res) => {
+    let { d1, d2 } = req.body
+    d2 ? d2 : d2 = Date.now()
+    d1 ? d1 : d1 = 0
+    Expense.find({ date: { $gte: d1, $lte: d2 } })
+        .sort({ date: -1 })
+        .then(function (expenses) {
+            res.send(expenses)
+        })
+        
+    // if (d1 && d2) {
+    //     Expense.find({ date: { $gte: d1, $lte: d2 } })
+    //         .sort({ date: -1 })
+    //         .then(function (expenses) {
+    //             res.send(expenses)
+    //         })
+    // } else if (d1) {
+    //     Expense.find({ date: { $gte: d1 } })
+    //         .sort({ date: -1 })
+    //         .then(function (expenses) {
+    //             res.send(expenses)
+    //         })
+    // } else {
+    //     Expense.find({})
+    //         .sort({ date: -1 })
+    //         .then(function (expenses) {
+    //             res.send(expenses)
+    //         })
+    // }
 })
 
 route.post("/expenses", (req, res) => {
@@ -35,6 +58,26 @@ route.put('/update', (req, res) =>{
     Expense.findOneAndUpdate({group: group1}, {$set: {group: group2}}, {new: true}, (err, updated)=>{
        res.send(`the group of ${updated.item} changed to ${updated.group}`)
     })
+})
+
+route.get("/expenses/:group", (req, res) => {
+    const { group } = req.params
+    const { total } = req.body
+    if (total) {
+        Expense.aggregate([
+           { $match: {group}},
+           { $group: {_id: null, totalAmount: {$sum: '$amount'}}},
+           { $project: { _id: 0, totalAmount: 1 }}
+        ]).then((money) =>{
+            res.send(money)
+        })
+    } else {
+        Expense.find({ group })
+            .sort({ date: -1 })
+            .then(function (expenses) {
+                res.send(expenses)
+            })
+    }
 })
 
 module.exports = route
